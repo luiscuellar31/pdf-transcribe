@@ -67,6 +67,29 @@ class GuardsTest(unittest.TestCase):
         self.md.write_text(tool.NOTE.format(name=self.pdf.name), encoding="utf-8")
         self.assertTrue(tool.transcribe(self.pdf).endswith("(already up to date)"))
 
+    def test_puts_the_markdown_beside_the_pdf_in_a_folder_or_in_the_cache(self):
+        pdf = Path("/docs/report.pdf")
+        self.assertEqual(tool.markdown_path(pdf, "beside"), Path("/docs/report.md"))
+        self.assertEqual(tool.markdown_path(pdf, "/notes"), Path("/notes/report.md"))
+        # The PDF's folder path keeps PDFs with the same name apart.
+        self.assertEqual(tool.markdown_path(pdf, "cache"), tool.cache_folder() / "docs/report.md")
+
+    def test_skips_a_markdown_in_a_folder_newer_than_its_pdf(self):
+        os.utime(self.pdf, (0, 0))
+        notes = self.folder / "notes"
+        notes.mkdir()
+        (notes / "report.md").write_text(tool.NOTE.format(name=self.pdf.resolve()), encoding="utf-8")
+        self.assertTrue(tool.transcribe(self.pdf, str(notes)).endswith("(already up to date)"))
+
+    def test_never_shares_a_markdown_between_pdfs_with_the_same_name(self):
+        notes = self.folder / "notes"
+        notes.mkdir()
+        other = tool.NOTE.format(name="/elsewhere/report.pdf")
+        (notes / "report.md").write_text(other, encoding="utf-8")
+        with self.assertRaises(ValueError):
+            tool.transcribe(self.pdf, str(notes))
+        self.assertEqual((notes / "report.md").read_text(encoding="utf-8"), other)
+
     def test_rejects_a_missing_pdf(self):
         with self.assertRaises(ValueError):
             tool.transcribe(self.folder / "other.pdf")

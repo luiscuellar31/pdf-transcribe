@@ -9,8 +9,8 @@ and Tesseract on Linux. It uses only Python's standard library.
 
 For each PDF, `transcribe()`:
 
-1. Stops early when the Markdown is up to date (see
-   [Writing safely](#writing-safely)).
+1. Finds where its Markdown goes, and stops early when that Markdown is up to
+   date (see [Writing safely](#writing-safely)).
 2. Reads each page's own text with `pdftotext -layout`, which keeps columns and
    indents apart.
 3. Sends pages with fewer than 200 letters or digits to OCR, since they may
@@ -34,10 +34,29 @@ each. It is built into `build/` on first use, and again whenever its source
 changes. On Linux, Tesseract reads Spanish and English when both are installed,
 else English alone.
 
+## Where the Markdown goes
+
+`markdown_path()` places it by `-o`, or by `PDF_TRANSCRIBE_OUTPUT` when `-o` is
+not given:
+
+- `beside`, the default: next to the PDF, with the PDF's name.
+- `cache`: in the system's cache folder, `~/Library/Caches/pdf-transcribe` on
+  macOS or `$XDG_CACHE_HOME/pdf-transcribe` on Linux, by default
+  `~/.cache/pdf-transcribe`, under the PDF's own folder path, so PDFs with the
+  same name never meet there.
+- Anything else is a folder, created when missing, that holds the Markdown
+  under the PDF's name.
+
+Next to its PDF, the Markdown's note names the PDF alone. Anywhere else it names
+the PDF's full path, so a reader can find the PDF, and so the tool can tell
+which PDF a Markdown belongs to.
+
 ## Writing safely
 
 - The note at the top of each Markdown says `made with pdf-transcribe`. A `.md`
   without it was not made by the tool, and is never overwritten.
+- A Markdown whose note names another PDF, as when two PDFs with the same name
+  go to one folder, is never overwritten either.
 - A Markdown newer than its PDF is left as is.
 - The Markdown is written to a `.partial` file first and then renamed, so an
   interrupted run never leaves half a Markdown that looks finished.

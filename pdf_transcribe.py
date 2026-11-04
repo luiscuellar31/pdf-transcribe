@@ -1,7 +1,8 @@
 #!/usr/bin/env -S python3 -I
-"""Transcribes PDFs to Markdown next to each file, so an agent reads text instead of page images.
+"""Transcribes PDFs to Markdown, so an agent reads text instead of page images.
 
     pdf-transcribe report.pdf [other.pdf ...]       writes report.md next to report.pdf
+    pdf-transcribe -o cache report.pdf              writes it in the cache; -o also takes a folder
 
 Pages keep the PDF's own text; pages with little of it, such as scans or handwriting, also go
 through OCR: Apple Vision on macOS (vision_ocr.swift, built on first use), Tesseract elsewhere.
@@ -11,6 +12,7 @@ poppler (pdfinfo, pdftotext, pdfimages, pdftoppm), plus Swift on macOS or Tesser
 """
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -39,12 +41,18 @@ MIN_IMAGE_AREA = 2
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Transcribe PDFs to Markdown next to each file.")
+    parser = argparse.ArgumentParser(description="Transcribe PDFs to Markdown.")
     parser.add_argument("pdfs", nargs="+", type=Path, metavar="pdf")
+    parser.add_argument(
+        "-o", "--output", metavar="WHERE", default=os.environ.get("PDF_TRANSCRIBE_OUTPUT") or "beside",
+        help='where each Markdown goes: "beside" its PDF, "cache", or a folder; '
+        "PDF_TRANSCRIBE_OUTPUT sets the default (beside)",
+    )
+    args = parser.parse_args()
     failed = False
-    for pdf in parser.parse_args().pdfs:
+    for pdf in args.pdfs:
         try:
-            print(transcribe(pdf))
+            print(transcribe(pdf, args.output))
         except subprocess.CalledProcessError as error:
             # The tool already printed why.
             print(f"{pdf}: {Path(error.cmd[0]).name} failed", file=sys.stderr)
@@ -55,13 +63,19 @@ def main():
     sys.exit(1 if failed else 0)
 
 
-def transcribe(pdf: Path) -> str:
+def transcribe(pdf: Path, output: str = "beside") -> str:
     if not pdf.is_file():
         raise ValueError("does not exist")
-    out = pdf.with_suffix(".md")
+    out = markdown_path(pdf, output)
+    # Away from its PDF, the Markdown names the PDF's full path, so a reader can still find it.
+    source = Path(pdf.name) if out.parent.resolve() == pdf.parent.resolve() else pdf.resolve()
     if out.exists():
-        if MARK not in out.read_text(encoding="utf-8", errors="replace")[:1000]:
-            raise ValueError(f"{out.name} already exists and was not made by pdf-transcribe; left untouched")
+        head = out.read_text(encoding="utf-8", errors="replace")[:1000]
+        if MARK not in head:
+            raise ValueError(f"{out} already exists and was not made by pdf-transcribe; left untouched")
+        # Two PDFs with the same name sent to one folder would otherwise share a Markdown.
+        if f"`{source}` {MARK}" not in head:
+            raise ValueError(f"{out} already exists for another PDF; left untouched")
         if out.stat().st_mtime >= pdf.stat().st_mtime:
             return f"{out} (already up to date)"
 
@@ -75,10 +89,28 @@ def transcribe(pdf: Path) -> str:
     images = pages_with_images(run(["pdfimages", "-list", str(pdf)]), len(texts)) - ocr_pages
 
     # Written aside and then moved, so an interrupted run never leaves a half Markdown that looks done.
+    out.parent.mkdir(parents=True, exist_ok=True)
     partial = out.with_name(out.name + ".partial")
-    partial.write_text(markdown(pdf, texts, ocr_pages, images), encoding="utf-8")
+    partial.write_text(markdown(source, texts, ocr_pages, images), encoding="utf-8")
     partial.replace(out)
     return f"{out}: {count_pages(len(texts))}, {len(ocr_pages)} with OCR, {len(images)} with images"
+
+
+def markdown_path(pdf: Path, output: str) -> Path:
+    """Where the Markdown of a PDF goes: "beside" it, in the "cache", or in a folder."""
+    if output == "beside":
+        return pdf.with_suffix(".md")
+    if output == "cache":
+        # Under the PDF's own folder path, so PDFs with the same name never meet.
+        return cache_folder() / pdf.resolve().with_suffix(".md").relative_to("/")
+    return Path(output).expanduser() / pdf.with_suffix(".md").name
+
+
+def cache_folder() -> Path:
+    """This tool's folder in the system's cache, which the system may clear: the Markdown is made again then."""
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Caches" / "pdf-transcribe"
+    return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "pdf-transcribe"
 
 
 def count_pages(count: int) -> str:
@@ -157,8 +189,8 @@ def pages_with_images(listing: str, page_count: int) -> set[int]:
     return content
 
 
-def markdown(pdf: Path, texts: list[str], ocr_pages: set[int], images: set[int]) -> str:
-    parts = [f"# {pdf.stem}", "", NOTE.format(name=pdf.name), ""]
+def markdown(source: Path, texts: list[str], ocr_pages: set[int], images: set[int]) -> str:
+    parts = [f"# {source.stem}", "", NOTE.format(name=source), ""]
     for n, text in enumerate(texts, 1):
         mark = " · OCR" if n in ocr_pages else " · with images" if n in images else ""
         parts += [f"## Page {n}{mark}", "", tidy(text) or "(no text)", ""]

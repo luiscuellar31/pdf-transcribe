@@ -14,6 +14,8 @@ tokens. It is a single Python script for macOS and Linux.
   none, such as scans or handwriting: Apple Vision on macOS, Tesseract on
   Linux.
 - Marks pages with large images, so you know when to look at the PDF itself.
+- Writes the Markdown next to its PDF, in a folder you choose, or out of sight
+  in your cache.
 - Skips PDFs whose Markdown is up to date, and never overwrites a `.md` it did
   not write.
 
@@ -23,9 +25,7 @@ A page with enough text of its own skips OCR, so the text inside its images is
 not transcribed. Tables come out as plain text, without their structure, and
 figures drawn as vectors are not marked. Handwriting comes out with errors, and
 handwritten formulas are barely readable. Vision detects the language, while
-Tesseract reads only Spanish and English, and handwriting much worse. The
-Markdown goes next to its PDF, so in a Git repository it can end up in a
-commit.
+Tesseract reads only Spanish and English, and handwriting much worse.
 
 ## Install
 
@@ -66,6 +66,32 @@ have images. To redo one, delete its `.md` and run the command again.
 
 OCR takes under a second per page with Vision, though its first use on a Mac
 can take about a minute to load, and a few seconds per page with Tesseract.
+
+### Choose where the Markdown goes
+
+| Command | Markdown |
+| --- | --- |
+| `pdf-transcribe report.pdf` | next to the PDF, as `report.md` |
+| `pdf-transcribe -o ~/notes report.pdf` | in a folder you choose, as `~/notes/report.md` |
+| `pdf-transcribe -o cache report.pdf` | in your cache, out of sight |
+
+Away from its PDF, the Markdown names the PDF's full path, so whoever reads it
+can still find the PDF. The cache files each Markdown under its PDF's folder
+path, so PDFs with the same name never meet, in
+`~/Library/Caches/pdf-transcribe` on macOS or `~/.cache/pdf-transcribe` on
+Linux. The system may clear it, and the command then makes the Markdown again.
+In a folder you choose, a PDF whose name another PDF's Markdown already uses is
+left alone, with a message.
+
+To make a choice the default, set `PDF_TRANSCRIBE_OUTPUT` in your shell
+profile, such as `~/.zshrc`; `-o beside` still puts a Markdown next to its PDF.
+
+```sh
+export PDF_TRANSCRIBE_OUTPUT=cache   # or a folder, such as ~/notes
+```
+
+A Markdown kept away from its PDF also stays out of any Git repository the PDF
+is in, and so out of its commits.
 
 ## The Markdown
 

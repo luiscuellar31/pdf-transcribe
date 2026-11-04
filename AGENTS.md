@@ -1,6 +1,6 @@
 # Working in this repository
 
-A local tool that turns PDFs into Markdown next to each file, so agents read text instead of page images. One person uses it, on macOS 26 or later, where OCR is Apple Vision, and on Linux, where it is Tesseract. [README.md](README.md) explains what it does, how to install and use it, and its limits, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) how a PDF becomes Markdown; update them in the same commit whenever any of that changes.
+A local tool that turns PDFs into Markdown, next to each file, in a chosen folder, or in the cache, so agents read text instead of page images. One person uses it, on macOS 26 or later, where OCR is Apple Vision, and on Linux, where it is Tesseract. [README.md](README.md) explains what it does, how to install and use it, and its limits, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) how a PDF becomes Markdown; update them in the same commit whenever any of that changes.
 
 ## Code
 
