@@ -3,7 +3,7 @@
 Turns a PDF into Markdown and saves it next to the file: `report.pdf` → `report.md`. An agent can then read and search the text instead of opening each page as an image, which costs more tokens.
 
 - Pages use the text the PDF carries.
-- Pages with little text, such as scans or handwriting, also go through Apple Vision's OCR. Its reading is used only when it finds clearly more text than the PDF.
+- Pages with little text, such as scans or handwriting, also go through OCR: Apple Vision on macOS and Tesseract on Linux. Its reading is used only when it finds clearly more text than the PDF.
 - Pages with large images are marked, so you can check them in the PDF when needed.
 - If the Markdown already exists and is newer than the PDF, it is not made again.
 - It never overwrites a `.md` the tool did not write.
@@ -12,9 +12,8 @@ Turns a PDF into Markdown and saves it next to the file: `report.pdf` → `repor
 
 Python 3.9 or later, with its standard library and no third-party packages. Also:
 
-- macOS 26 or later, for Vision's document reader.
-- poppler: `brew install poppler`.
-- Swift, which comes with Xcode or its Command Line Tools. The first time it runs OCR, it builds `vision_ocr.swift` into `build/`.
+- **macOS:** macOS 26 or later, for Vision's document reader; poppler (`brew install poppler`); and Swift, which comes with Xcode or its Command Line Tools. The first time it runs OCR, it builds `vision_ocr.swift` into `build/`.
+- **Linux:** poppler and Tesseract 5 with Spanish, which come with Debian 12 or later and Ubuntu 24.04 or later: `sudo apt install poppler-utils tesseract-ocr tesseract-ocr-spa`. Without Spanish, Tesseract reads English only.
 
 ## Installation
 
@@ -34,7 +33,7 @@ pdf-transcribe report.pdf [other.pdf ...]
 
 It prints the path of each Markdown and how many pages went through OCR or have images. To redo one, delete the `.md` and run it again.
 
-OCR takes under a second per page, although the first time Vision is used on a Mac it can take about a minute to load.
+With Vision, OCR takes under a second per page, although the first time it is used on a Mac it can take about a minute to load. With Tesseract it takes a few seconds per page.
 
 ## The Markdown
 
@@ -65,6 +64,7 @@ Transcription of `report.pdf` made with pdf-transcribe: …
 - Figures drawn as vectors, not as images, are not marked.
 - A page that went through OCR is not marked "with images". Tables are read cell by cell, without their structure.
 - Handwriting is read with errors, and handwritten formulas are barely understood.
+- Tesseract reads printed text almost as well as Vision, but handwriting much worse. It also reads only Spanish and English, while Vision detects the language.
 - If the PDF is inside a repository, the `.md` sits next to it and can end up in a commit.
 
 ## Tests

@@ -31,6 +31,11 @@ class PagesTest(unittest.TestCase):
         # On 3 pages of 10 the image is content, not part of the template.
         self.assertEqual(tool.pages_with_images(LISTING, page_count=10), {1, 2, 3, 4})
 
+    def test_tesseract_reads_spanish_and_english_when_installed(self):
+        header = 'List of available languages in "/usr/share/tesseract-ocr/5/tessdata/" (3):\n'
+        self.assertEqual(tool.tesseract_languages(header + "eng\nosd\nspa\n"), "spa+eng")
+        self.assertEqual(tool.tesseract_languages(header + "eng\nosd\n"), "eng")
+
     def test_tidy_drops_padding_and_extra_blank_lines(self):
         self.assertEqual(tool.tidy("  Name        Age   \n\n\n\n  Ana         31"), "Name  Age\n\n  Ana  31")
 

@@ -4,10 +4,10 @@
     pdf-transcribe report.pdf [other.pdf ...]       writes report.md next to report.pdf
 
 Pages keep the PDF's own text; pages with little of it, such as scans or handwriting, also go
-through Apple Vision OCR (vision_ocr.swift, built on first use). Pages with large images are marked,
-so a reader knows when to look at the page itself. A Markdown newer than its PDF is left as is, and
-a .md this tool did not write is never overwritten. Needs poppler (pdfinfo, pdftotext, pdfimages,
-pdftoppm) and Swift.
+through OCR: Apple Vision on macOS (vision_ocr.swift, built on first use), Tesseract elsewhere.
+Pages with large images are marked, so a reader knows when to look at the page itself. A Markdown
+newer than its PDF is left as is, and a .md this tool did not write is never overwritten. Needs
+poppler (pdfinfo, pdftotext, pdfimages, pdftoppm), plus Swift on macOS or Tesseract elsewhere.
 """
 
 import argparse
@@ -19,10 +19,15 @@ from collections import defaultdict
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+# Apple Vision on macOS; elsewhere Tesseract, which reads worse.
+VISION = sys.platform == "darwin"
+OCR_ENGINE = "Apple Vision" if VISION else "Tesseract"
+# Vision reads small print well at 200 dpi; Tesseract works best from 300 dpi up.
+OCR_DPI = 200 if VISION else 300
 MARK = "made with pdf-transcribe"
 NOTE = (
     "Transcription of `{name}` " + MARK + ": the PDF's own text and, on pages with almost none, "
-    'such as scans or handwriting, OCR by Apple Vision. "Page N" is page N of the PDF, '
+    "such as scans or handwriting, OCR by " + OCR_ENGINE + '. "Page N" is page N of the PDF, '
     'not the printed one. A page marked "OCR" may contain errors, and one marked "with images" has '
     "figures this text does not describe: to quote exactly or see a figure, check that page in the PDF."
 )
@@ -98,17 +103,29 @@ def ocr_wins(own: str, read: str) -> bool:
 
 
 def ocr(pdf: Path, pages: set[int]) -> dict[int, str]:
-    """Apple Vision's reading of the given pages, by page number."""
+    """The OCR reading of the given pages, by page number."""
     if not pages:
         return {}
     print(f"{pdf.name}: OCR of {count_pages(len(pages))} with little text…", file=sys.stderr)
     with tempfile.TemporaryDirectory(prefix="pdf-transcribe-") as work:
-        # shortcut: renders every page before reading them (~2 MB each); read in batches if books of hundreds of scanned pages fill the disk.
+        # shortcut: renders every page before reading them (2 to 5 MB each); read in batches if books of hundreds of scanned pages fill the disk.
         for n in pages:
-            # 200 dpi in gray is enough for small print and keeps the images light.
-            run(["pdftoppm", "-r", "200", "-gray", "-png", "-singlefile", "-f", str(n), "-l", str(n), str(pdf), f"{work}/{n}"])
-        run([str(vision_ocr()), work])
-        return {n: Path(work, f"{n}.txt").read_text(encoding="utf-8") for n in pages}
+            # In gray, the images stay light.
+            run(["pdftoppm", "-r", str(OCR_DPI), "-gray", "-png", "-singlefile", "-f", str(n), "-l", str(n), str(pdf), f"{work}/{n}"])
+        if VISION:
+            run([str(vision_ocr()), work])
+            return {n: Path(work, f"{n}.txt").read_text(encoding="utf-8") for n in pages}
+        languages = tesseract_languages(run(["tesseract", "--list-langs"]))
+        # debug_file drops notices such as "Detected 27 diacritics"; errors still show.
+        options = ["-l", languages, "--dpi", str(OCR_DPI), "-c", "debug_file=/dev/null"]
+        return {n: run(["tesseract", f"{work}/{n}.png", "stdout", *options]) for n in pages}
+
+
+def tesseract_languages(listing: str) -> str:
+    """Spanish and English for `tesseract -l`, from those `tesseract --list-langs` reports."""
+    installed = set(listing.splitlines()[1:])
+    # shortcut: reads Spanish and English only; add a language here when documents in it show up.
+    return "+".join(language for language in ("spa", "eng") if language in installed) or "eng"
 
 
 def vision_ocr() -> Path:

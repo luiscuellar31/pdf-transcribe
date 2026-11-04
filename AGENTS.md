@@ -1,18 +1,18 @@
 # Working in this repository
 
-A local tool that turns PDFs into Markdown next to each file, so agents read text instead of page images. One person uses it, on a Mac with macOS 26 or later. [README.md](README.md) explains what it does, how to install it, and its limits; update it in the same commit whenever any of those change.
+A local tool that turns PDFs into Markdown next to each file, so agents read text instead of page images. One person uses it, on macOS 26 or later, where OCR is Apple Vision, and on Linux, where it is Tesseract. [README.md](README.md) explains what it does, how to install it, and its limits; update it in the same commit whenever any of those change.
 
 ## Code
 
-- `pdf_transcribe.py` decides which pages use their own text, which go through OCR, and which are marked as having images, and writes the Markdown. `vision_ocr.swift` only reads images with Vision.
-- Python with its standard library, poppler, and Swift. Ask before adding a third-party package.
+- `pdf_transcribe.py` decides which pages use their own text, which go through OCR, and which are marked as having images, and writes the Markdown. On Linux it calls Tesseract; `vision_ocr.swift` only reads images with Vision on macOS.
+- Python with its standard library, poppler, and Swift on macOS or Tesseract on Linux. Ask before adding a third-party package.
 - Prefer readable code consistent with the code around it, even when it takes more lines. Comments explain why, not what.
-- Everything in the repository is in English: code, identifiers, comments, commit messages, the tool's messages, the generated Markdown, and the docs. The PDFs it reads can be in any language Vision detects.
+- Everything in the repository is in English: code, identifiers, comments, commit messages, the tool's messages, the generated Markdown, and the docs. The PDFs it reads can be in Spanish or English, or in any language Vision detects.
 - The tool never overwrites a `.md` it did not write.
 
 ## Checks
 
-Before calling a change done, run the tests (`python3 -I -m unittest`) and transcribe a PDF with text and a scanned one. Use copies in a temporary folder, because the tool writes next to the PDF.
+Before calling a change done, run the tests (`python3 -I -m unittest`) and transcribe a PDF with text and a scanned one. Use copies in a temporary folder, because the tool writes next to the PDF. If the change touches OCR on Linux, test it on Linux, for example in a Debian container with `poppler-utils`, `tesseract-ocr`, and `tesseract-ocr-spa`.
 
 ## Commits
 
