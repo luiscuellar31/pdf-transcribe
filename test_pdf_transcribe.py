@@ -1,7 +1,7 @@
 import os
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import pdf_transcribe as tool
 
@@ -71,8 +71,21 @@ class GuardsTest(unittest.TestCase):
         pdf = Path("/docs/report.pdf")
         self.assertEqual(tool.markdown_path(pdf, "beside"), Path("/docs/report.md"))
         self.assertEqual(tool.markdown_path(pdf, "/notes"), Path("/notes/report.md"))
-        # The PDF's folder path keeps PDFs with the same name apart.
-        self.assertEqual(tool.markdown_path(pdf, "cache"), tool.cache_folder() / "docs/report.md")
+        # The PDF's folder path, with its drive on Windows, keeps PDFs with the same name apart.
+        drive = Path.cwd().drive.rstrip(":")
+        self.assertEqual(tool.markdown_path(pdf, "cache"), tool.cache_folder() / drive / "docs/report.md")
+
+    def test_keeps_the_drive_or_network_share_of_a_windows_path_in_the_cache(self):
+        self.assertEqual(tool.without_anchor(PureWindowsPath("C:/docs/report.md")), PureWindowsPath("C/docs/report.md"))
+        share = PureWindowsPath("//server/share/report.md")
+        self.assertEqual(tool.without_anchor(share), PureWindowsPath("server/share/report.md"))
+
+    def test_expands_the_wildcards_that_windows_shells_pass_on(self):
+        annex = self.folder / "annex.pdf"
+        annex.write_bytes(b"%PDF-1.4\n")
+        names = [self.folder / "*.pdf", self.folder / "*.docx", self.folder / "other.pdf"]
+        expected = [annex, self.pdf, self.folder / "*.docx", self.folder / "other.pdf"]
+        self.assertEqual(tool.expand_wildcards(names), expected)
 
     def test_skips_a_markdown_in_a_folder_newer_than_its_pdf(self):
         os.utime(self.pdf, (0, 0))

@@ -3,7 +3,11 @@
 pdf-transcribe is one Python script, [`pdf_transcribe.py`](../pdf_transcribe.py),
 that runs poppler's command-line tools and an OCR engine: Apple Vision on
 macOS, through the small Swift program [`vision_ocr.swift`](../vision_ocr.swift),
-and Tesseract on Linux. It uses only Python's standard library.
+and Tesseract on Linux and Windows. It uses only Python's standard library.
+
+On Windows, [`pdf-transcribe.cmd`](../pdf-transcribe.cmd) runs the script with
+the `py` launcher, and the script expands wildcards such as `*.pdf` itself,
+because cmd and PowerShell pass them on as typed.
 
 ## From PDF to Markdown
 
@@ -31,8 +35,8 @@ For each PDF, `transcribe()`:
 `vision_ocr.swift` reads every PNG in a folder with Vision's document reader,
 which keeps the reading order of columns and boxes, and writes a `.txt` beside
 each. It is built into `build/` on first use, and again whenever its source
-changes. On Linux, Tesseract reads Spanish and English when both are installed,
-else English alone.
+changes. On Linux and Windows, Tesseract reads Spanish and English when both are
+installed, else English alone.
 
 ## Where the Markdown goes
 
@@ -41,9 +45,10 @@ not given:
 
 - `beside`, the default: next to the PDF, with the PDF's name.
 - `cache`: in the system's cache folder, `~/Library/Caches/pdf-transcribe` on
-  macOS or `$XDG_CACHE_HOME/pdf-transcribe` on Linux, by default
-  `~/.cache/pdf-transcribe`, under the PDF's own folder path, so PDFs with the
-  same name never meet there.
+  macOS, `$XDG_CACHE_HOME/pdf-transcribe` on Linux, by default
+  `~/.cache/pdf-transcribe`, or `%LOCALAPPDATA%\pdf-transcribe\Cache` on
+  Windows, under the PDF's own folder path, with its drive on Windows, so PDFs
+  with the same name never meet there.
 - Anything else is a folder, created when missing, that holds the Markdown
   under the PDF's name.
 

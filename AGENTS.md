@@ -1,18 +1,18 @@
 # Working in this repository
 
-A local tool that turns PDFs into Markdown, next to each file, in a chosen folder, or in the cache, so agents read text instead of page images. One person uses it, on macOS 26 or later, where OCR is Apple Vision, and on Linux, where it is Tesseract. [README.md](README.md) explains what it does, how to install and use it, and its limits, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) how a PDF becomes Markdown; update them in the same commit whenever any of that changes.
+A local tool that turns PDFs into Markdown, next to each file, in a chosen folder, or in the cache, so agents read text instead of page images. One person uses it, on macOS 26 or later, where OCR is Apple Vision, and on Linux and Windows, where it is Tesseract. [README.md](README.md) explains what it does, how to install and use it, and its limits, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) how a PDF becomes Markdown; update them in the same commit whenever any of that changes.
 
 ## Code
 
-- `pdf_transcribe.py` decides which pages use their own text, which go through OCR, and which are marked as having images, and writes the Markdown. On Linux it calls Tesseract; `vision_ocr.swift` only reads images with Vision on macOS.
-- Python with its standard library, poppler, and Swift on macOS or Tesseract on Linux. Ask before adding a third-party package.
+- `pdf_transcribe.py` decides which pages use their own text, which go through OCR, and which are marked as having images, and writes the Markdown. On Linux and Windows it calls Tesseract; `vision_ocr.swift` only reads images with Vision on macOS, and `pdf-transcribe.cmd` only runs the script on Windows.
+- Python with its standard library, poppler, and Swift on macOS or Tesseract on Linux and Windows. Ask before adding a third-party package.
 - Prefer readable code consistent with the code around it, even when it takes more lines. Comments explain why, not what.
 - Everything in the repository is in English: code, identifiers, comments, commit messages, the tool's messages, the generated Markdown, and the docs. The PDFs it reads can be in Spanish or English, or in any language Vision detects.
 - The tool never overwrites a `.md` it did not write.
 
 ## Checks
 
-Before calling a change done, run the tests (`python3 -I -m unittest`) and transcribe a PDF with text and a scanned one. Use copies in a temporary folder, because the tool writes next to the PDF. If the change touches OCR on Linux, test it on Linux, for example in a Debian container with `poppler-utils`, `tesseract-ocr`, and `tesseract-ocr-spa`.
+Before calling a change done, run the tests (`python3 -I -m unittest`) and transcribe a PDF with text and a scanned one. Use copies in a temporary folder, because the tool writes next to the PDF. If the change touches OCR on Linux, test it on Linux, for example in a Debian container with `poppler-utils`, `tesseract-ocr`, and `tesseract-ocr-spa`. If it touches what differs on Windows, such as paths, the cache, or `pdf-transcribe.cmd`, test it on Windows, with poppler and Tesseract from Scoop.
 
 ## Commits
 

@@ -12,13 +12,14 @@ poppler (pdfinfo, pdftotext, pdfimages, pdftoppm), plus Swift on macOS or Tesser
 """
 
 import argparse
+import glob
 import os
 import re
 import subprocess
 import sys
 import tempfile
 from collections import defaultdict
-from pathlib import Path
+from pathlib import Path, PurePath
 
 HERE = Path(__file__).resolve().parent
 # Apple Vision on macOS; elsewhere Tesseract, which reads worse.
@@ -49,8 +50,10 @@ def main():
         "PDF_TRANSCRIBE_OUTPUT sets the default (beside)",
     )
     args = parser.parse_args()
+    # cmd and PowerShell pass a wildcard such as *.pdf on as typed, where the shells of macOS and Linux expand it.
+    pdfs = expand_wildcards(args.pdfs) if sys.platform == "win32" else args.pdfs
     failed = False
-    for pdf in args.pdfs:
+    for pdf in pdfs:
         try:
             print(transcribe(pdf, args.output))
         except subprocess.CalledProcessError as error:
@@ -61,6 +64,16 @@ def main():
             print(f"{pdf}: {error}", file=sys.stderr)
             failed = True
     sys.exit(1 if failed else 0)
+
+
+def expand_wildcards(names: list[Path]) -> list[Path]:
+    """The files each name matches, or the name itself when it holds no wildcard or matches nothing."""
+    pdfs = []
+    for name in map(str, names):
+        # Windows file names cannot hold * or ?, so either one is a wildcard.
+        matches = sorted(glob.glob(name)) if "*" in name or "?" in name else []
+        pdfs += [Path(match) for match in matches or [name]]
+    return pdfs
 
 
 def transcribe(pdf: Path, output: str = "beside") -> str:
@@ -102,14 +115,21 @@ def markdown_path(pdf: Path, output: str) -> Path:
         return pdf.with_suffix(".md")
     if output == "cache":
         # Under the PDF's own folder path, so PDFs with the same name never meet.
-        return cache_folder() / pdf.resolve().with_suffix(".md").relative_to("/")
+        return cache_folder() / without_anchor(pdf.resolve().with_suffix(".md"))
     return Path(output).expanduser() / pdf.with_suffix(".md").name
+
+
+def without_anchor(path: PurePath) -> PurePath:
+    r"""An absolute path made relative, keeping a Windows drive or network share as folders: C:\docs becomes C\docs."""
+    return type(path)(path.anchor.strip("/\\:"), path.relative_to(path.anchor))
 
 
 def cache_folder() -> Path:
     """This tool's folder in the system's cache, which the system may clear: the Markdown is made again then."""
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Caches" / "pdf-transcribe"
+    if sys.platform == "win32":
+        return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "pdf-transcribe" / "Cache"
     return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "pdf-transcribe"
 
 
@@ -149,7 +169,7 @@ def ocr(pdf: Path, pages: set[int]) -> dict[int, str]:
             return {n: Path(work, f"{n}.txt").read_text(encoding="utf-8") for n in pages}
         languages = tesseract_languages(run(["tesseract", "--list-langs"]))
         # debug_file drops notices such as "Detected 27 diacritics"; errors still show.
-        options = ["-l", languages, "--dpi", str(OCR_DPI), "-c", "debug_file=/dev/null"]
+        options = ["-l", languages, "--dpi", str(OCR_DPI), "-c", f"debug_file={os.devnull}"]
         return {n: run(["tesseract", f"{work}/{n}.png", "stdout", *options]) for n in pages}
 
 

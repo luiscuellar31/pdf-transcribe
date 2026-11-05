@@ -6,13 +6,13 @@
 
 pdf-transcribe turns a PDF into Markdown once, so an AI agent can read and
 search its text instead of opening each page as an image, which costs far more
-tokens. It is a single Python script for macOS and Linux.
+tokens. It is a single Python script for macOS, Linux, and Windows.
 
 ## Features
 
 - Uses the text the PDF already has, and runs OCR only on pages with almost
   none, such as scans or handwriting: Apple Vision on macOS, Tesseract on
-  Linux.
+  Linux and Windows.
 - Marks pages with large images, so you know when to look at the PDF itself.
 - Writes the Markdown next to its PDF, in a folder you choose, or out of sight
   in your cache.
@@ -46,13 +46,33 @@ including its Spanish data:
 sudo apt install poppler-utils tesseract-ocr tesseract-ocr-spa
 ```
 
-Then get the code and put the command on your `PATH`:
+**Windows:** Windows 10 or later, with Python from
+[python.org](https://www.python.org/downloads/windows/), which brings the `py`
+command, and poppler and Tesseract, including its Spanish data, from
+[Scoop](https://scoop.sh):
+
+```powershell
+scoop install poppler tesseract tesseract-languages
+```
+
+Then get the code and put the command on your `PATH`. On macOS and Linux:
 
 ```sh
 git clone https://github.com/luiscuellar31/pdf-transcribe.git
 cd pdf-transcribe
 ln -s "$PWD/pdf_transcribe.py" ~/.local/bin/pdf-transcribe
 ```
+
+On Windows, in PowerShell, put the folder itself on your `PATH`, so its
+`pdf-transcribe.cmd` answers to `pdf-transcribe`, and open a new terminal:
+
+```powershell
+git clone https://github.com/luiscuellar31/pdf-transcribe.git
+cd pdf-transcribe
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$PWD", "User")
+```
+
+In Git Bash, the command is `pdf-transcribe.cmd`.
 
 ## Usage
 
@@ -78,8 +98,9 @@ can take about a minute to load, and a few seconds per page with Tesseract.
 Away from its PDF, the Markdown names the PDF's full path, so whoever reads it
 can still find the PDF. The cache files each Markdown under its PDF's folder
 path, so PDFs with the same name never meet, in
-`~/Library/Caches/pdf-transcribe` on macOS or `~/.cache/pdf-transcribe` on
-Linux. The system may clear it, and the command then makes the Markdown again.
+`~/Library/Caches/pdf-transcribe` on macOS, `~/.cache/pdf-transcribe` on Linux,
+or `%LOCALAPPDATA%\pdf-transcribe\Cache` on Windows. The system may clear it,
+and the command then makes the Markdown again.
 In a folder you choose, a PDF whose name another PDF's Markdown already uses is
 left alone, with a message.
 
@@ -89,6 +110,9 @@ profile, such as `~/.zshrc`; `-o beside` still puts a Markdown next to its PDF.
 ```sh
 export PDF_TRANSCRIBE_OUTPUT=cache   # or a folder, such as ~/notes
 ```
+
+On Windows, `setx PDF_TRANSCRIBE_OUTPUT cache` sets it for the terminals you
+open next.
 
 A Markdown kept away from its PDF also stays out of any Git repository the PDF
 is in, and so out of its commits.
